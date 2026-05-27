@@ -1,0 +1,30 @@
+# .github/workflows/powershell-static-check.yml
+name: PowerShell Static Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  psscriptanalyzer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error
+
+          if ($results) {
+            $results | Format-Table -AutoSize
+            exit 1
+          }
