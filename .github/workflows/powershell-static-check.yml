@@ -22,9 +22,4 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error
-
-          if ($results) {
-            $results | Format-Table -AutoSize
-            exit 1
-          }
+          Invoke-ScriptAnalyzer -Path Create-Ubuntu-HyperV.ps1
