@@ -734,7 +734,7 @@ if (Get-VM -Name $VMName -ErrorAction SilentlyContinue) {
 else {
     try {
         # Create VM without a default disk
-        $vm = New-VM -Name $VMName `
+        New-VM -Name $VMName `
             -MemoryStartupBytes $MemorySize `
             -Generation 2 `
             -Path $WorkDir `
