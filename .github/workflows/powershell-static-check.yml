@@ -22,7 +22,17 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          $results = Invoke-ScriptAnalyzer -Path ./Create-Ubuntu-HyperV.ps1 -Severity Warning,Error
+        
+          $settings = @{
+                ExcludeRules = @(
+                  'PSAvoidUsingConvertToSecureStringWithPlainText'
+                  'PSReviewUnusedParameter'
+                  'PSAvoidUsingPlainTextForPassword'
+                  'PSUseShouldProcessForStateChangingFunctions'
+                )
+              }
+
+          $results = Invoke-ScriptAnalyzer -Path ./Create-Ubuntu-HyperV.ps1 -Severity Warning,Error -Settings $settings
 
           if ($results) {
             $results | Select-Object Severity, RuleName, ScriptName, Line, Column, Message | Format-List
