@@ -22,4 +22,9 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          Invoke-ScriptAnalyzer -Path Create-Ubuntu-HyperV.ps1
+          $results = Invoke-ScriptAnalyzer -Path ./Create-Ubuntu-HyperV.ps1 -Severity Warning,Error
+
+          if ($results) {
+            $results | Select-Object Severity, RuleName, ScriptName, Line, Column, Message | Format-List
+            exit 1
+          }
