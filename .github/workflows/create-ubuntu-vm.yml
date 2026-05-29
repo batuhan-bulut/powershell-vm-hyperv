@@ -9,14 +9,14 @@ on:
 
 jobs:
   create-ubuntu:
-    runs-on: [self-hosted, windows]
+    runs-on: [self-hosted, Windows]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run PowerShell script
-        shell: pwsh
+        shell: powershell
         env:
           UBUNTU_VM_PASSWORD: ${{ secrets.UBUNTU_VM_PASSWORD }}
         run: |
