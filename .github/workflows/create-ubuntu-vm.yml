@@ -1,0 +1,26 @@
+# .github/workflows/create-ubuntu-vm.yml
+name: Create Ubuntu Machine
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  create-ubuntu:
+    runs-on: [self-hosted, windows]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run PowerShell script
+        shell: pwsh
+        env:
+          UBUNTU_VM_PASSWORD: ${{ secrets.UBUNTU_VM_PASSWORD }}
+        run: |
+          .\Create-UbuntuVM.ps1 `
+            -VMName "TestUbuntu26" `
+            -AllowPasswordAuth `
+            -NonInteractive
