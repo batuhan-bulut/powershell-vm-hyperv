@@ -20,7 +20,7 @@ jobs:
         env:
           UBUNTU_VM_PASSWORD: ${{ secrets.UBUNTU_VM_PASSWORD }}
         run: |
-          .\Create-UbuntuVM.ps1 `
+          .\Create-Ubuntu-HyperV.ps1 `
             -VMName "TestUbuntu26" `
             -AllowPasswordAuth `
             -NonInteractive
