@@ -22,5 +22,6 @@ jobs:
         run: |
           .\Create-Ubuntu-HyperV.ps1 `
             -VMName "TestUbuntu26" `
+            -DiskSize 32GB `
             -AllowPasswordAuth `
             -NonInteractive
