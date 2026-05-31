@@ -571,13 +571,50 @@ Write-Output "Ubuntu image checksum verified."
 # -------------------------------------------------------------
 # 4. CONVERT DISK TO VHDX
 # -------------------------------------------------------------
-$vhdxFileName = "ubuntu-$UbuntuVersion-server-cloudimg-amd64.vhdx"
+$imageBaseName = "ubuntu-$UbuntuVersion-server-cloudimg-amd64"
+$imageToConvertPath = $localImgPath
+
+if ($DiskSize -gt 0) {
+    $resizedImgPath = Join-Path $WorkDir "$imageBaseName-$DiskSize.img"
+
+    Write-Output "`nPreparing Ubuntu image copy with requested disk size..."
+    if (-not (Test-Path $resizedImgPath)) {
+        Write-Output "Copying source image to $resizedImgPath..."
+        Copy-Item -Path $localImgPath -Destination $resizedImgPath -Force
+    }
+    else {
+        Write-Output "Resized source image already exists at $resizedImgPath."
+    }
+
+    Write-Output "Setting source image virtual size to $DiskSize bytes with qemu-img..."
+    $resizeProcess = Start-Process -FilePath $qemuImg -ArgumentList @("resize", "`"$resizedImgPath`"", $DiskSize.ToString()) -Wait -PassThru -NoNewWindow
+    if ($resizeProcess.ExitCode -ne 0) {
+        throw "qemu-img failed to resize source image '$resizedImgPath'. Exit code: $($resizeProcess.ExitCode)."
+    }
+
+    $imageToConvertPath = $resizedImgPath
+    $vhdxFileName = "$imageBaseName-$DiskSize.vhdx"
+}
+else {
+    $vhdxFileName = "$imageBaseName.vhdx"
+}
+
 $osVhdxPath = Join-Path $WorkDir $vhdxFileName
 
 Write-Output "`nConverting Ubuntu disk to Hyper-V VHDX format..."
-if (-not (Test-Path $osVhdxPath)) {
-    Write-Output "Converting $localImgPath to dynamic VHDX..."
-    $argList = @("convert", "-O", "vhdx", "-o", "subformat=dynamic", "`"$localImgPath`"", "`"$osVhdxPath`"")
+$shouldConvertVhdx = -not (Test-Path $osVhdxPath)
+if (-not $shouldConvertVhdx -and $DiskSize -gt 0) {
+    $vhdInfo = Get-VHD -Path $osVhdxPath -ErrorAction Stop
+    if ($vhdInfo.Size -ne $DiskSize) {
+        Write-Output "Existing OS VHDX size is $($vhdInfo.Size) bytes, expected $DiskSize bytes. Recreating it."
+        Remove-Item -Path $osVhdxPath -Force
+        $shouldConvertVhdx = $true
+    }
+}
+
+if ($shouldConvertVhdx) {
+    Write-Output "Converting $imageToConvertPath to dynamic VHDX..."
+    $argList = @("convert", "-O", "vhdx", "-o", "subformat=dynamic", "`"$imageToConvertPath`"", "`"$osVhdxPath`"")
     
     # Run the convert process
     $proc = Start-Process -FilePath $qemuImg -ArgumentList $argList -Wait -PassThru -NoNewWindow
@@ -592,30 +629,14 @@ else {
 }
 
 if ($DiskSize -gt 0) {
-    Write-Output "Checking OS VHDX size..."
+    Write-Output "Verifying OS VHDX size..."
     $vhdInfo = Get-VHD -Path $osVhdxPath -ErrorAction Stop
 
-    if ($vhdInfo.Size -gt $DiskSize) {
-        throw "Requested DiskSize '$DiskSize' bytes is smaller than the current VHDX size '$($vhdInfo.Size)' bytes. Shrinking is not supported."
+    if ($vhdInfo.Size -ne $DiskSize) {
+        throw "VHDX size is '$($vhdInfo.Size)' bytes instead of requested '$DiskSize' bytes."
     }
 
-    if ($vhdInfo.Size -lt $DiskSize) {
-        Write-Output "Resizing OS VHDX to $DiskSize bytes with qemu-img..."
-        $resizeProcess = Start-Process -FilePath $qemuImg -ArgumentList @("resize", "`"$osVhdxPath`"", $DiskSize.ToString()) -Wait -PassThru -NoNewWindow
-        if ($resizeProcess.ExitCode -ne 0) {
-            throw "qemu-img failed to resize '$osVhdxPath'. Exit code: $($resizeProcess.ExitCode)."
-        }
-
-        $vhdInfo = Get-VHD -Path $osVhdxPath -ErrorAction Stop
-        if ($vhdInfo.Size -ne $DiskSize) {
-            throw "qemu-img resize completed, but VHDX size is '$($vhdInfo.Size)' bytes instead of requested '$DiskSize' bytes."
-        }
-
-        Write-Output "OS VHDX resized."
-    }
-    else {
-        Write-Output "OS VHDX already matches requested disk size."
-    }
+    Write-Output "OS VHDX matches requested disk size."
 }
 
 # -------------------------------------------------------------
