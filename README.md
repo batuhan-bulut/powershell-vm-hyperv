@@ -196,6 +196,32 @@ Use aria2 for faster downloads and install it automatically if missing:
   -Aria2Connections 16
 ```
 
+## CI/CD Pipeline Usage
+
+The script is pipeline-friendly for non-interactive runs, but the pipeline runner must be a Windows machine that can actually create Hyper-V VMs:
+
+- Use a self-hosted Windows runner or agent.
+- Run the job with Administrator privileges.
+- Enable Hyper-V and the Hyper-V PowerShell module on the runner.
+- Use a machine with nested virtualization enabled if the runner itself is virtualized.
+- Provide `qemu-img.exe` ahead of time or allow `winget` installation with `-InstallQemuWithWinget`.
+- Provide credentials through a secret-backed environment variable or use SSH key authentication.
+
+Hosted GitHub Actions or hosted Azure DevOps Windows runners are not suitable for creating Hyper-V VMs because they do not expose the required Hyper-V virtualization environment.
+
+Example non-interactive command for a self-hosted runner:
+
+```powershell
+$env:UBUNTU_VM_PASSWORD = $env:PIPELINE_UBUNTU_VM_PASSWORD
+
+.\Create-Ubuntu-HyperV.ps1 `
+  -VMName "PipelineUbuntu" `
+  -AllowPasswordAuth `
+  -PasswordEnvironmentVariable "UBUNTU_VM_PASSWORD" `
+  -NonInteractive `
+  -StartVM:$false
+```
+
 ## What the Script Does
 
 The script performs the following steps:

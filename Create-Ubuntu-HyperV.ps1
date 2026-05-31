@@ -84,9 +84,9 @@ $ProgressPreference = "SilentlyContinue"
 # -------------------------------------------------------------
 # 1. PREREQUISITES CHECK
 # -------------------------------------------------------------
-Write-Output "==================================================" -ForegroundColor Cyan
-Write-Output "  Ubuntu Hyper-V Provisioning Script Starting     " -ForegroundColor Cyan
-Write-Output "==================================================" -ForegroundColor Cyan
+Write-Output "=================================================="
+Write-Output "  Ubuntu Hyper-V Provisioning Script Starting     "
+Write-Output "=================================================="
 
 # Check for Administrator privileges
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -103,23 +103,23 @@ if (-not (Get-Command -Module Hyper-V -ErrorAction SilentlyContinue)) {
 
 # Ensure working directory exists
 if (-not (Test-Path $WorkDir)) {
-    Write-Output "Creating working directory at: $WorkDir" -ForegroundColor Gray
+    Write-Output "Creating working directory at: $WorkDir"
     New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
 }
 
 # Determine Switch Name if not supplied
 if (-not $SwitchName) {
-    Write-Output "SwitchName parameter not provided. Detecting network switches..." -ForegroundColor Gray
+    Write-Output "SwitchName parameter not provided. Detecting network switches..."
     $defaultSwitch = Get-VMSwitch | Where-Object { $_.SwitchType -eq 'Internal' -and $_.Name -like "*Default*" } | Select-Object -First 1
     if ($defaultSwitch) {
         $SwitchName = $defaultSwitch.Name
-        Write-Output "Detected and selected default internal switch: '$SwitchName'" -ForegroundColor Green
+        Write-Output "Detected and selected default internal switch: '$SwitchName'"
     }
     else {
         $anySwitch = Get-VMSwitch | Select-Object -First 1
         if ($anySwitch) {
             $SwitchName = $anySwitch.Name
-            Write-Output "Selected first available switch: '$SwitchName'" -ForegroundColor Green
+            Write-Output "Selected first available switch: '$SwitchName'"
         }
         else {
             Write-Error "CRITICAL: No Hyper-V Virtual Switch was detected. Please create a virtual switch first."
@@ -189,7 +189,7 @@ Function Install-WingetPackage {
         throw "winget is not available. Install $DisplayName manually or install App Installer from Microsoft Store."
     }
 
-    Write-Output "Installing $DisplayName via Windows Package Manager (winget)..." -ForegroundColor Cyan
+    Write-Output "Installing $DisplayName via Windows Package Manager (winget)..."
     $safeName = $DisplayName -replace '[^A-Za-z0-9_.-]', '-'
     $wingetStdOut = Join-Path $env:TEMP "$safeName-winget-stdout.log"
     $wingetStdErr = Join-Path $env:TEMP "$safeName-winget-stderr.log"
@@ -214,8 +214,8 @@ Function Install-WingetPackage {
         }
 
         if ($wingetOutput.Count -gt 0) {
-            Write-Output "winget output:" -ForegroundColor Yellow
-            $wingetOutput | ForEach-Object { Write-Output "  $_" -ForegroundColor Yellow }
+            Write-Output "winget output:"
+            $wingetOutput | ForEach-Object { Write-Output "  $_" }
         }
 
         throw "winget failed to install $DisplayName. Exit code: $($process.ExitCode)."
@@ -267,7 +267,7 @@ Function Invoke-CheckedDownload {
             throw "DownloadMethod is Aria2, but aria2c was not found. Rerun with -InstallAria2WithWinget or install aria2 manually."
         }
 
-        Write-Output "Downloading with aria2c ($Aria2Connections connections): $Uri" -ForegroundColor Gray
+        Write-Output "Downloading with aria2c ($Aria2Connections connections): $Uri"
         $ariaArgs = @(
             "--continue=true",
             "--disable-ipv6=true",
@@ -305,7 +305,7 @@ Function Invoke-CheckedDownload {
             throw "DownloadMethod is Bits, but Start-BitsTransfer was not found."
         }
 
-        Write-Output "Downloading with BITS: $Uri" -ForegroundColor Gray
+        Write-Output "Downloading with BITS: $Uri"
         try {
             Start-BitsTransfer -Source $Uri -Destination $OutFile -ErrorAction Stop
         }
@@ -329,7 +329,7 @@ Function Invoke-CheckedDownload {
         Remove-Item -Path $partialPath -Force
     }
 
-    Write-Output "Downloading with Invoke-WebRequest: $Uri" -ForegroundColor Gray
+    Write-Output "Downloading with Invoke-WebRequest: $Uri"
     Invoke-WebRequest -Uri $Uri -OutFile $partialPath -UseBasicParsing -ErrorAction Stop
     Move-Item -Path $partialPath -Destination $OutFile -Force
 }
@@ -482,7 +482,7 @@ Function New-CidataIso {
 $qemuImg = Get-QemuImgPath
 
 if (-not $qemuImg) {
-    Write-Output "`nqemu-img.exe not found on the system." -ForegroundColor Yellow
+    Write-Output "`nqemu-img.exe not found on the system."
     
     if ($InstallQemuWithWinget) {
         try {
@@ -502,10 +502,10 @@ if (-not $qemuImg) {
         Exit
     }
     
-    Write-Output "QEMU successfully installed at: $qemuImg" -ForegroundColor Green
+    Write-Output "QEMU successfully installed at: $qemuImg"
 }
 else {
-    Write-Output "QEMU found at: $qemuImg" -ForegroundColor Green
+    Write-Output "QEMU found at: $qemuImg"
 }
 
 # -------------------------------------------------------------
@@ -518,25 +518,25 @@ $localImgPath = Join-Path $WorkDir $imgFileName
 $sha256SumsPath = Join-Path $WorkDir "SHA256SUMS-$UbuntuVersion"
 $sha256SumsGpgPath = Join-Path $WorkDir "SHA256SUMS-$UbuntuVersion.gpg"
 
-Write-Output "`nChecking for Ubuntu $UbuntuVersion Cloud Image..." -ForegroundColor Cyan
+Write-Output "`nChecking for Ubuntu $UbuntuVersion Cloud Image..."
 if (-not (Test-Path $localImgPath)) {
-    Write-Output "Downloading Ubuntu Cloud Image from $imgUrl..." -ForegroundColor Cyan
-    Write-Output "This is a large download and may take a moment. Please wait..." -ForegroundColor Gray
+    Write-Output "Downloading Ubuntu Cloud Image from $imgUrl..."
+    Write-Output "This is a large download and may take a moment. Please wait..."
     
     Invoke-CheckedDownload -Uri $imgUrl -OutFile $localImgPath -AllowFallback
-    Write-Output "Ubuntu image downloaded successfully: $localImgPath" -ForegroundColor Green
+    Write-Output "Ubuntu image downloaded successfully: $localImgPath"
 }
 else {
-    Write-Output "Ubuntu cloud image already exists at $localImgPath. Skipping download." -ForegroundColor Green
+    Write-Output "Ubuntu cloud image already exists at $localImgPath. Skipping download."
 }
 
-Write-Output "Downloading Ubuntu checksum files..." -ForegroundColor Cyan
+Write-Output "Downloading Ubuntu checksum files..."
 Invoke-CheckedDownload -Uri "$ubuntuBaseUrl/SHA256SUMS" -OutFile $sha256SumsPath -Method "WebRequest" -AllowFallback
 Invoke-CheckedDownload -Uri "$ubuntuBaseUrl/SHA256SUMS.gpg" -OutFile $sha256SumsGpgPath -Method "WebRequest" -AllowFallback
 
 $gpg = Get-Command gpg -ErrorAction SilentlyContinue
 if ($gpg) {
-    Write-Output "Verifying SHA256SUMS signature with local GPG keyring..." -ForegroundColor Gray
+    Write-Output "Verifying SHA256SUMS signature with local GPG keyring..."
     $gpgProcess = Start-Process -FilePath $gpg.Source -ArgumentList @("--verify", "`"$sha256SumsGpgPath`"", "`"$sha256SumsPath`"") -Wait -PassThru -NoNewWindow
     if ($gpgProcess.ExitCode -ne 0) {
         Write-Error "CRITICAL: Ubuntu SHA256SUMS signature verification failed. Import Canonical's signing key or inspect the checksum files before retrying."
@@ -547,7 +547,7 @@ else {
     Write-Warning "gpg was not found, so SHA256SUMS signature verification was skipped. The image checksum will still be verified against the downloaded SHA256SUMS file."
 }
 
-Write-Output "Verifying Ubuntu image SHA256 checksum..." -ForegroundColor Gray
+Write-Output "Verifying Ubuntu image SHA256 checksum..."
 try {
     Test-UbuntuImageChecksum -ImagePath $localImgPath -Sha256SumsPath $sha256SumsPath -FileName $imgFileName
 }
@@ -559,7 +559,7 @@ catch {
     Invoke-CheckedDownload -Uri $imgUrl -OutFile $localImgPath -AllowFallback
     Test-UbuntuImageChecksum -ImagePath $localImgPath -Sha256SumsPath $sha256SumsPath -FileName $imgFileName
 }
-Write-Output "Ubuntu image checksum verified." -ForegroundColor Green
+Write-Output "Ubuntu image checksum verified."
 
 # -------------------------------------------------------------
 # 4. CONVERT DISK TO VHDX
@@ -567,9 +567,9 @@ Write-Output "Ubuntu image checksum verified." -ForegroundColor Green
 $vhdxFileName = "ubuntu-$UbuntuVersion-server-cloudimg-amd64.vhdx"
 $osVhdxPath = Join-Path $WorkDir $vhdxFileName
 
-Write-Output "`nConverting Ubuntu disk to Hyper-V VHDX format..." -ForegroundColor Cyan
+Write-Output "`nConverting Ubuntu disk to Hyper-V VHDX format..."
 if (-not (Test-Path $osVhdxPath)) {
-    Write-Output "Converting $localImgPath to dynamic VHDX..." -ForegroundColor Gray
+    Write-Output "Converting $localImgPath to dynamic VHDX..."
     $argList = @("convert", "-O", "vhdx", "-o", "subformat=dynamic", "`"$localImgPath`"", "`"$osVhdxPath`"")
     
     # Run the convert process
@@ -578,10 +578,10 @@ if (-not (Test-Path $osVhdxPath)) {
         Write-Error "Disk conversion failed with exit code $($proc.ExitCode)."
         Exit
     }
-    Write-Output "Disk conversion finished: $osVhdxPath" -ForegroundColor Green
+    Write-Output "Disk conversion finished: $osVhdxPath"
 }
 else {
-    Write-Output "OS VHDX file already exists at $osVhdxPath. Skipping conversion." -ForegroundColor Green
+    Write-Output "OS VHDX file already exists at $osVhdxPath. Skipping conversion."
 }
 
 # -------------------------------------------------------------
@@ -589,10 +589,10 @@ else {
 # -------------------------------------------------------------
 $cidataIsoPath = Join-Path $WorkDir "cidata.iso"
 
-Write-Output "`nGenerating cloud-init seed ISO (cidata)..." -ForegroundColor Cyan
+Write-Output "`nGenerating cloud-init seed ISO (cidata)..."
 
 try {
-    Write-Output "Writing cloud-init metadata and user-data..." -ForegroundColor Gray
+    Write-Output "Writing cloud-init metadata and user-data..."
 
     if (-not $AllowPasswordAuth -and -not $SshPublicKey) {
         throw "Provide -SshPublicKey or explicitly enable password login with -AllowPasswordAuth."
@@ -611,7 +611,7 @@ try {
         if (-not $Password -and $PasswordEnvironmentVariable) {
             $envPassword = [Environment]::GetEnvironmentVariable($PasswordEnvironmentVariable)
             if ($envPassword) {
-                Write-Output "Using password from environment variable '$PasswordEnvironmentVariable'." -ForegroundColor Gray
+                Write-Output "Using password from environment variable '$PasswordEnvironmentVariable'."
                 $Password = ConvertTo-SecureString -String $envPassword -AsPlainText -Force
             }
         }
@@ -685,9 +685,9 @@ local-hostname: $VMName
 instance-id: $instanceId
 "@
 
-    Write-Output "Creating cidata ISO at $cidataIsoPath..." -ForegroundColor Gray
+    Write-Output "Creating cidata ISO at $cidataIsoPath..."
     New-CidataIso -IsoPath $cidataIsoPath -UserData $userDataContent -MetaData $metaDataContent
-    Write-Output "Cloud-init seed ISO created successfully." -ForegroundColor Green
+    Write-Output "Cloud-init seed ISO created successfully."
 
 }
 catch {
@@ -698,12 +698,12 @@ catch {
 # -------------------------------------------------------------
 # 6. PROVISION HYPER-V VM
 # -------------------------------------------------------------
-Write-Output "`nProvisioning Hyper-V Virtual Machine '$VMName'..." -ForegroundColor Cyan
+Write-Output "`nProvisioning Hyper-V Virtual Machine '$VMName'..."
 
 # Create VM if it doesn't already exist
 if (Get-VM -Name $VMName -ErrorAction SilentlyContinue) {
-    Write-Output "A VM named '$VMName' already exists. Skipping VM creation." -ForegroundColor Yellow
-    Write-Output "Updating the VM's cloud-init seed ISO when possible..." -ForegroundColor Gray
+    Write-Output "A VM named '$VMName' already exists. Skipping VM creation."
+    Write-Output "Updating the VM's cloud-init seed ISO when possible..."
     $existingVm = Get-VM -Name $VMName
     $existingVmFolder = $existingVm.ConfigurationLocation
     $existingSeedIsoDest = Join-Path $existingVmFolder "cidata.iso"
@@ -728,7 +728,7 @@ if (Get-VM -Name $VMName -ErrorAction SilentlyContinue) {
         }
 
         Remove-Item -Path $oldSeedDiskDest -Force -ErrorAction SilentlyContinue
-        Write-Output "Updated cloud-init seed ISO for existing VM." -ForegroundColor Green
+        Write-Output "Updated cloud-init seed ISO for existing VM."
     }
 }
 else {
@@ -750,23 +750,23 @@ else {
         $vmOsDiskDest = Join-Path $vmFolder $vhdxFileName
         $vmSeedIsoDest = Join-Path $vmFolder "cidata.iso"
         
-        Write-Output "Copying VM disk and seed ISO to the VM directory..." -ForegroundColor Gray
+        Write-Output "Copying VM disk and seed ISO to the VM directory..."
         Copy-Item -Path $osVhdxPath -Destination $vmOsDiskDest -Force
         Copy-Item -Path $cidataIsoPath -Destination $vmSeedIsoDest -Force
         
         # Attach OS disk (SCSI controller 0, Location 0)
-        Write-Output "Attaching OS Disk..." -ForegroundColor Gray
+        Write-Output "Attaching OS Disk..."
         Add-VMHardDiskDrive -VMName $VMName -Path $vmOsDiskDest -ControllerNumber 0 -ControllerLocation 0 -ErrorAction Stop
         
         # Attach cloud-init seed ISO as a DVD drive (SCSI controller 0, Location 1)
-        Write-Output "Attaching Cloud-Init Seed ISO..." -ForegroundColor Gray
+        Write-Output "Attaching Cloud-Init Seed ISO..."
         Add-VMDvdDrive -VMName $VMName -Path $vmSeedIsoDest -ControllerNumber 0 -ControllerLocation 1 -ErrorAction Stop
         
         # Disable Secure Boot (required for standard Ubuntu cloud images to boot smoothly on local Hyper-V)
-        Write-Output "Disabling Secure Boot for compatibility..." -ForegroundColor Gray
+        Write-Output "Disabling Secure Boot for compatibility..."
         Set-VMFirmware -VMName $VMName -EnableSecureBoot Off -ErrorAction Stop
         
-        Write-Output "VM '$VMName' created and configured successfully." -ForegroundColor Green
+        Write-Output "VM '$VMName' created and configured successfully."
         
     }
     catch {
@@ -779,23 +779,23 @@ else {
 # 7. START VIRTUAL MACHINE
 # -------------------------------------------------------------
 if ($StartVM) {
-    Write-Output "`nStarting VM '$VMName'..." -ForegroundColor Cyan
+    Write-Output "`nStarting VM '$VMName'..."
     try {
         Start-VM -Name $VMName -ErrorAction Stop
-        Write-Output "VM '$VMName' started successfully!" -ForegroundColor Green
-        Write-Output "`n==================================================" -ForegroundColor Cyan
-        Write-Output "  Deployment complete!" -ForegroundColor Green
-        Write-Output "  1. Open Hyper-V Manager to connect to the console." -ForegroundColor Yellow
-        Write-Output "  2. Credential details:" -ForegroundColor Yellow
-        Write-Output "     - Username: $Username" -ForegroundColor Yellow
+        Write-Output "VM '$VMName' started successfully!"
+        Write-Output "`n=================================================="
+        Write-Output "  Deployment complete!"
+        Write-Output "  1. Open Hyper-V Manager to connect to the console."
+        Write-Output "  2. Credential details:"
+        Write-Output "     - Username: $Username"
         if ($AllowPasswordAuth) {
-            Write-Output "     - Password authentication enabled for the supplied password." -ForegroundColor Yellow
+            Write-Output "     - Password authentication enabled for the supplied password."
         }
         else {
-            Write-Output "     - SSH key authentication enabled; password login disabled." -ForegroundColor Yellow
+            Write-Output "     - SSH key authentication enabled; password login disabled."
         }
-        Write-Output "  3. Wait 1-2 minutes for cloud-init to run on first boot." -ForegroundColor Yellow
-        Write-Output "==================================================" -ForegroundColor Cyan
+        Write-Output "  3. Wait 1-2 minutes for cloud-init to run on first boot."
+        Write-Output "=================================================="
         $deadline = (Get-Date).AddMinutes(10)
         $vmIpAddresses = @()
 
@@ -813,7 +813,7 @@ if ($StartVM) {
         } while (-not $vmIpAddresses -and (Get-Date) -lt $deadline)
 
         if ($vmIpAddresses) {
-            Write-Output "VM IP Addresses for SSH: $($vmIpAddresses -join ', ')" -ForegroundColor Green
+            Write-Output "VM IP Addresses for SSH: $($vmIpAddresses -join ', ')"
         }
         else {
             Write-Warning "Timed out waiting for a Hyper-V reported IPv4 address. Check the VM console with 'ip addr'."
@@ -825,7 +825,7 @@ if ($StartVM) {
     }
 }
 else {
-    Write-Output "`nDeployment complete!" -ForegroundColor Green
+    Write-Output "`nDeployment complete!"
 
 
 }
