@@ -25,6 +25,8 @@
     Optional SSH public key (e.g. "ssh-rsa AAAAB3N...") to add to authorized_keys for the user.
 .PARAMETER MemorySize
     The startup memory size for the VM. Default: 2GB
+.PARAMETER DiskSize
+    Optional OS disk size for the dynamic VHDX. Use PowerShell size literals such as 32GB or 64GB. If omitted, the Ubuntu cloud image size is used.
 .PARAMETER CpuCount
     The number of virtual processors for the VM. Default: 2
 .PARAMETER SwitchName
@@ -64,6 +66,7 @@ param(
     [switch]$NonInteractive,
     [string]$SshPublicKey = $null,
     [long]$MemorySize = 2GB,
+    [long]$DiskSize = 0,
     [int]$CpuCount = 2,
     [string]$SwitchName = $null,
     [bool]$StartVM = $true,
@@ -87,6 +90,10 @@ $ProgressPreference = "SilentlyContinue"
 Write-Output "=================================================="
 Write-Output "  Ubuntu Hyper-V Provisioning Script Starting     "
 Write-Output "=================================================="
+
+if ($PSVersionTable.PSEdition -eq "Core") {
+    Write-Warning "Running under PowerShell $($PSVersionTable.PSVersion) ($($PSVersionTable.PSEdition)). Hyper-V cmdlets are more reliable in CI when run with Windows PowerShell 5.1 (powershell.exe)."
+}
 
 # Check for Administrator privileges
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -584,6 +591,24 @@ else {
     Write-Output "OS VHDX file already exists at $osVhdxPath. Skipping conversion."
 }
 
+if ($DiskSize -gt 0) {
+    Write-Output "Checking OS VHDX size..."
+    $vhdInfo = Get-VHD -Path $osVhdxPath -ErrorAction Stop
+
+    if ($vhdInfo.Size -gt $DiskSize) {
+        throw "Requested DiskSize '$DiskSize' bytes is smaller than the current VHDX size '$($vhdInfo.Size)' bytes. Shrinking is not supported."
+    }
+
+    if ($vhdInfo.Size -lt $DiskSize) {
+        Write-Output "Resizing OS VHDX to $DiskSize bytes..."
+        Resize-VHD -Path $osVhdxPath -SizeBytes $DiskSize -ErrorAction Stop
+        Write-Output "OS VHDX resized."
+    }
+    else {
+        Write-Output "OS VHDX already matches requested disk size."
+    }
+}
+
 # -------------------------------------------------------------
 # 5. CREATE CLOUD-INIT SEED ISO (CIDATA)
 # -------------------------------------------------------------
@@ -701,10 +726,11 @@ catch {
 Write-Output "`nProvisioning Hyper-V Virtual Machine '$VMName'..."
 
 # Create VM if it doesn't already exist
-if (Get-VM -Name $VMName -ErrorAction SilentlyContinue) {
+Write-Output "Checking whether VM '$VMName' already exists..."
+$existingVm = Get-VM -Name $VMName -ErrorAction SilentlyContinue
+if ($existingVm) {
     Write-Output "A VM named '$VMName' already exists. Skipping VM creation."
     Write-Output "Updating the VM's cloud-init seed ISO when possible..."
-    $existingVm = Get-VM -Name $VMName
     $existingVmFolder = $existingVm.ConfigurationLocation
     $existingSeedIsoDest = Join-Path $existingVmFolder "cidata.iso"
     $oldSeedDiskDest = Join-Path $existingVmFolder "cidata.vhdx"
@@ -734,18 +760,22 @@ if (Get-VM -Name $VMName -ErrorAction SilentlyContinue) {
 else {
     try {
         # Create VM without a default disk
+        Write-Output "VM '$VMName' was not found. Creating Generation 2 VM at '$WorkDir'..."
         New-VM -Name $VMName `
             -MemoryStartupBytes $MemorySize `
             -Generation 2 `
             -Path $WorkDir `
-            -SwitchName $SwitchName `
             -NoVHD `
             -ErrorAction Stop
+        Write-Output "VM shell created successfully."
         
         # Configure vCPUs
+        Write-Output "Configuring VM processor, memory, and network switch..."
         Set-VMProcessor -VMName $VMName -Count $CpuCount -ErrorAction Stop
-        Set-VMMemory -VMName $vmName -DynamicMemoryEnabled $false -StartupBytes $MemorySize
+        Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $false -StartupBytes $MemorySize
+        Connect-VMNetworkAdapter -VMName $VMName -SwitchName $SwitchName -ErrorAction Stop
         # Retrieve the directory where VM files are stored to copy disks there
+        Write-Output "Reading VM configuration location..."
         $vmFolder = (Get-VM -Name $VMName).ConfigurationLocation
         $vmOsDiskDest = Join-Path $vmFolder $vhdxFileName
         $vmSeedIsoDest = Join-Path $vmFolder "cidata.iso"

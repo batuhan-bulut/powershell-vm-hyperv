@@ -131,6 +131,7 @@ Use aria2 for faster downloads and install it automatically if missing:
 | `NonInteractive` | disabled | Prevents interactive prompts |
 | `SshPublicKey` | `$null` | SSH public key added to the user's `authorized_keys` |
 | `MemorySize` | `2GB` | Startup memory assigned to the VM |
+| `DiskSize` | image default | Optional OS disk size, for example `32GB` or `64GB` |
 | `CpuCount` | `2` | Number of virtual CPUs |
 | `SwitchName` | auto-detect | Hyper-V virtual switch name |
 | `StartVM` | `$true` | Starts the VM after provisioning |
@@ -165,6 +166,15 @@ Use aria2 for faster downloads and install it automatically if missing:
 .\Create-Ubuntu-HyperV.ps1 `
   -VMName "UbuntuLab" `
   -WorkDir "D:\HyperV\Ubuntu" `
+  -SshPublicKey "ssh-ed25519 AAAAC3Nza..."
+```
+
+### Create a VM with a larger OS disk
+
+```powershell
+.\Create-Ubuntu-HyperV.ps1 `
+  -VMName "UbuntuServer" `
+  -DiskSize 64GB `
   -SshPublicKey "ssh-ed25519 AAAAC3Nza..."
 ```
 
@@ -203,6 +213,7 @@ The script is pipeline-friendly for non-interactive runs, but the pipeline runne
 - Use a self-hosted Windows runner or agent.
 - Run the job with Administrator privileges.
 - Enable Hyper-V and the Hyper-V PowerShell module on the runner.
+- Prefer Windows PowerShell 5.1 (`powershell.exe`) for the pipeline step; Hyper-V cmdlets can be unreliable from PowerShell 7 compatibility sessions in CI.
 - Use a machine with nested virtualization enabled if the runner itself is virtualized.
 - Provide `qemu-img.exe` ahead of time or allow `winget` installation with `-InstallQemuWithWinget`.
 - Provide credentials through a secret-backed environment variable or use SSH key authentication.
