@@ -600,8 +600,17 @@ if ($DiskSize -gt 0) {
     }
 
     if ($vhdInfo.Size -lt $DiskSize) {
-        Write-Output "Resizing OS VHDX to $DiskSize bytes..."
-        Resize-VHD -Path $osVhdxPath -SizeBytes $DiskSize -ErrorAction Stop
+        Write-Output "Resizing OS VHDX to $DiskSize bytes with qemu-img..."
+        $resizeProcess = Start-Process -FilePath $qemuImg -ArgumentList @("resize", "`"$osVhdxPath`"", $DiskSize.ToString()) -Wait -PassThru -NoNewWindow
+        if ($resizeProcess.ExitCode -ne 0) {
+            throw "qemu-img failed to resize '$osVhdxPath'. Exit code: $($resizeProcess.ExitCode)."
+        }
+
+        $vhdInfo = Get-VHD -Path $osVhdxPath -ErrorAction Stop
+        if ($vhdInfo.Size -ne $DiskSize) {
+            throw "qemu-img resize completed, but VHDX size is '$($vhdInfo.Size)' bytes instead of requested '$DiskSize' bytes."
+        }
+
         Write-Output "OS VHDX resized."
     }
     else {
