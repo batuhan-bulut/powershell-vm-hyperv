@@ -719,7 +719,6 @@ ssh_pwauth: false
     $userDataContent += @"
 
 package_update: true
-package_upgrade: true
 
 packages:
   - linux-cloud-tools-virtual
@@ -854,13 +853,15 @@ if ($StartVM) {
         else {
             Write-Output "     - SSH key authentication enabled; password login disabled."
         }
-        Write-Output "  3. Wait 1-2 minutes for cloud-init to run on first boot."
+        Write-Output "  3. Wait for cloud-init to install Hyper-V KVP support on first boot."
         Write-Output "=================================================="
         $deadline = (Get-Date).AddMinutes(10)
+        $ipWaitStartedAt = Get-Date
         $vmIpAddresses = @()
 
         do {
-            Write-Output "Waiting for VM IP address..."
+            $elapsedText = ((Get-Date) - $ipWaitStartedAt).ToString("mm\:ss")
+            Write-Output "Waiting for VM IP address... elapsed $elapsedText"
             Start-Sleep -Seconds 15
 
             $vmIpAddresses = Get-VMNetworkAdapter -VMName $VMName |
@@ -872,11 +873,12 @@ if ($StartVM) {
 
         } while (-not $vmIpAddresses -and (Get-Date) -lt $deadline)
 
+        $elapsedText = ((Get-Date) - $ipWaitStartedAt).ToString("mm\:ss")
         if ($vmIpAddresses) {
-            Write-Output "VM IP Addresses for SSH: $($vmIpAddresses -join ', ')"
+            Write-Output "VM IP Addresses for SSH after ${elapsedText}: $($vmIpAddresses -join ', ')"
         }
         else {
-            Write-Warning "Timed out waiting for a Hyper-V reported IPv4 address. Check the VM console with 'ip addr'."
+            Write-Warning "Timed out after $elapsedText waiting for a Hyper-V reported IPv4 address. Check the VM console with 'ip addr'."
         }
     
     }

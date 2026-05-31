@@ -292,7 +292,7 @@ You can also open the VM console from Hyper-V Manager.
 - Secure Boot is disabled for compatibility with standard Ubuntu cloud images.
 - The OS disk is created as a dynamic VHDX.
 - The cloud-init seed ISO is attached as a DVD drive.
-- The first boot may take a few minutes because cloud-init performs package updates and configuration.
+- The first boot may take a few minutes because cloud-init installs Hyper-V KVP support and configures the guest.
 - The VM may reboot once during the first boot process.
 
 ## Troubleshooting
